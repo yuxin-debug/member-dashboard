@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>品牌會員儀表板</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --teal: #0D9488; --teal-lt: #CCEBE9; --teal-dk: #085041;
+    --amber: #D97706; --amber-lt: #FEF3C7;
+    --red: #DC2626; --red-lt: #FEE2E2;
+    --blue: #2563EB; --blue-lt: #DBEAFE;
+    --green: #059669; --green-lt: #D1FAE5;
+    --gray: #64748B; --gray-lt: #F1F5F9; --gray-md: #E2E8F0;
+    --text: #1E293B; --text-sub: #64748B; --text-hint: #94A3B8;
+    --bg: #F8FAFC; --bg-card: #FFFFFF; --border: #E2E8F0;
+    --radius: 10px; --radius-sm: 6px;
+  }
+
+  body { font-family: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif; background: var(--bg); color: var(--text); font-size: 13px; min-height: 100vh; }
+
+  .app { max-width: 960px; margin: 0 auto; padding: 20px 16px 40px; }
+
+  .header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 8px; }
+  .header h1 { font-size: 18px; font-weight: 600; color: var(--text); }
+  .header-sub { font-size: 12px; color: var(--text-hint); }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tab { padding: 6px 16px; border-radius: 20px; font-size: 12px; cursor: pointer; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-sub); transition: all 0.15s; user-select: none; }
+  .tab:hover { border-color: var(--teal); color: var(--teal); }
+  .tab.active { background: var(--teal); color: #fff; border-color: var(--teal); }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .g4 { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-bottom: 16px; }
+  .g3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin-bottom: 16px; }
+  .g2 { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 14px; margin-bottom: 16px; }
+  @media(max-width:600px) { .g4,.g3 { grid-template-columns: 1fr 1fr; } .g2 { grid-template-columns: 1fr; } }
+
+  .mc { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+  .ml { font-size: 11px; color: var(--text-hint); margin-bottom: 4px; }
+  .mv { font-size: 22px; font-weight: 600; color: var(--text); line-height: 1.2; }
+  .ms { font-size: 11px; color: var(--text-sub); margin-top: 3px; }
+  .mv.teal { color: var(--teal); }
+  .mv.red   { color: var(--red); }
+  .mv.amber { color: var(--amber); }
+  .mv.blue  { color: var(--blue); }
+  .mv.green { color: var(--green); }
+
+  .sec { font-size: 11px; font-weight: 600; letter-spacing: .07em; color: var(--text-hint); text-transform: uppercase; margin: 4px 0 8px; }
+
+  .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 12px; }
+  .card-title { font-size: 13px; font-weight: 600; margin-bottom: 14px; }
+
+  .cw { position: relative; width: 100%; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+
+  .insight { border-radius: var(--radius-sm); padding: 10px 14px; font-size: 12px; line-height: 1.65; margin-bottom: 8px; }
+  .i-ok   { background: var(--green-lt); color: #065F46; }
+  .i-warn { background: var(--amber-lt); color: #92400E; }
+  .i-info { background: var(--blue-lt); color: #1E40AF; }
+  .i-red  { background: var(--red-lt); color: #991B1B; }
+
+  .field-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; margin-bottom: 12px; }
+  .field-grid-2 { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin-bottom: 12px; }
+  @media(max-width:600px) { .field-grid,.field-grid-2 { grid-template-columns: 1fr 1fr; } }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 11px; color: var(--text-sub); font-weight: 500; }
+  .field input {
+    height: 36px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+    background: var(--gray-lt); color: var(--text); font-size: 13px; padding: 0 10px;
+    width: 100%; font-family: inherit; transition: border-color 0.15s;
+  }
+  .field input:focus { outline: none; border-color: var(--teal); background: #fff; }
+
+  .btn-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .btn-save { padding: 8px 20px; background: var(--teal); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 13px; cursor: pointer; font-weight: 500; transition: background 0.15s; }
+  .btn-save:hover { background: var(--teal-dk); }
+  .save-msg { font-size: 11px; color: var(--teal); font-weight: 500; }
+
+  .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .data-table th { text-align: left; padding: 7px 10px; font-size: 11px; color: var(--text-hint); font-weight: 600; border-bottom: 1px solid var(--border); background: var(--gray-lt); }
+  .data-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--text); }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: var(--gray-lt); }
+  .del-btn { background: none; border: none; color: var(--text-hint); cursor: pointer; font-size: 14px; padding: 0 4px; border-radius: 4px; }
+  .del-btn:hover { color: var(--red); background: var(--red-lt); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 11px; color: var(--text-sub); margin-bottom: 8px; }
+  .ld { width: 10px; height: 10px; border-radius: 2px; display: inline-block; vertical-align: middle; margin-right: 3px; }
+
+  .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .bl { width: 95px; font-size: 11px; color: var(--text-sub); text-align: right; flex-shrink: 0; }
+  .bt { flex: 1; background: var(--gray-md); border-radius: 3px; height: 22px; overflow: hidden; }
+  .bf { height: 100%; border-radius: 3px; display: flex; align-items: center; padding-left: 8px; }
+  .bn { font-size: 10px; font-weight: 600; white-space: nowrap; }
+  .bp { width: 38px; text-align: right; font-size: 11px; color: var(--text-hint); flex-shrink: 0; }
+
+  .rdm-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; }
+  @media(max-width:600px) { .rdm-grid { grid-template-columns: 1fr; } }
+  .rdm-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; background: var(--bg-card); }
+  .rp { font-size: 12px; font-weight: 600; margin-bottom: 3px; }
+  .rn { font-size: 11px; color: var(--text-sub); margin-bottom: 6px; }
+  .rv { font-size: 22px; font-weight: 700; }
+  .rs { font-size: 11px; color: var(--text-sub); margin-top: 3px; }
+
+  .snap-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; }
+  @media(max-width:600px) { .snap-grid { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>品牌會員儀表板</h1>
+    <span class="header-sub" id="last-updated">載入中…</span>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="sw('dash',this)">儀表板</div>
+    <div class="tab" onclick="sw('monthly',this)">月報輸入</div>
+    <div class="tab" onclick="sw('snapshot',this)">會員快照</div>
+    <div class="tab" onclick="sw('points',this)">點數制度</div>
+  </div>
+
+  <!-- ══ 儀表板 ══ -->
+  <div id="p-dash" class="panel active">
+    <div class="sec">最新月報 — <span id="latest-month-label">—</span></div>
+    <div class="g4">
+      <div class="mc"><div class="ml">會員銷售額</div><div class="mv teal" id="d-sales">—</div><div class="ms" id="d-sales-pct">—</div></div>
+      <div class="mc"><div class="ml">會員客單</div><div class="mv" id="d-aov">—</div><div class="ms" id="d-aov-vs">—</div></div>
+      <div class="mc"><div class="ml">會員回購率</div><div class="mv teal" id="d-repurchase">—</div><div class="ms" id="d-repurchase-vs">—</div></div>
+      <div class="mc"><div class="ml">新會員 / 累計</div><div class="mv" id="d-new">—</div><div class="ms" id="d-total">累計 —</div></div>
+    </div>
+
+    <div class="g2">
+      <div>
+        <div class="sec">會員銷售佔比趨勢</div>
+        <div class="legend"><span><span class="ld" style="background:#0D9488;"></span>佔比 (%)</span></div>
+        <div class="cw" style="height:180px;"><canvas id="c-pct" role="img" aria-label="會員銷售佔比趨勢">各月會員銷售佔比</canvas></div>
+      </div>
+      <div>
+        <div class="sec">客單 × 回購率</div>
+        <div class="legend">
+          <span><span class="ld" style="background:#2563EB;"></span>客單 ($)</span>
+          <span><span class="ld" style="background:#D97706; border:1px dashed #D97706;"></span>回購率 (%)</span>
+        </div>
+        <div class="cw" style="height:180px;"><canvas id="c-aov" role="img" aria-label="客單與回購率">各月客單與回購率趨勢</canvas></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="sec">會員快照摘要</div>
+    <div class="g4">
+      <div class="mc"><div class="ml">會員總數</div><div class="mv" id="d-snap-total">—</div><div class="ms" id="d-snap-date">—</div></div>
+      <div class="mc"><div class="ml">平均消費</div><div class="mv" id="d-snap-avg">—</div><div class="ms" id="d-snap-median">中位數 —</div></div>
+      <div class="mc"><div class="ml">從未消費</div><div class="mv red" id="d-snap-zero">—</div><div class="ms" id="d-snap-zero-pct">—</div></div>
+      <div class="mc"><div class="ml">高價值客 $1,200+</div><div class="mv teal" id="d-snap-hv">—</div><div class="ms" id="d-snap-hv-pct">—</div></div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="sec">兌換門檻可達人數</div>
+    <div class="rdm-grid">
+      <div class="rdm-card">
+        <div class="rp" style="color:var(--teal);">75 點　剋菌液 300ml</div>
+        <div class="rn">需消費 $2,500｜成本 $180</div>
+        <div class="rv" style="color:var(--teal);" id="d-r75">—</div>
+        <div class="rs" id="d-r75-pct">—</div>
+      </div>
+      <div class="rdm-card">
+        <div class="rp" style="color:var(--blue);">100 點　食器清潔皂 180ml</div>
+        <div class="rn">需消費 $5,000｜銀卡同步</div>
+        <div class="rv" style="color:var(--blue);" id="d-r100">—</div>
+        <div class="rs" id="d-r100-pct">—</div>
+      </div>
+      <div class="rdm-card">
+        <div class="rp" style="color:var(--amber);">130 點　洗衣精 800ml</div>
+        <div class="rn">需消費 $8,000｜頂級忠誠</div>
+        <div class="rv" style="color:var(--amber);" id="d-r130">—</div>
+        <div class="rs" id="d-r130-pct">—</div>
+      </div>
+    </div>
+
+    <div id="d-insight-box" style="margin-top:12px;"></div>
+  </div>
+
+  <!-- ══ 月報輸入 ══ -->
+  <div id="p-monthly" class="panel">
+    <div class="card">
+      <div class="card-title">新增 / 更新月報資料</div>
+      <div class="field-grid">
+        <div class="field"><label>月份（YYYY-MM）</label><input id="f-month" placeholder="2026-04" /></div>
+        <div class="field"><label>會員銷售額 ($)</label><input id="f-sales" type="number" placeholder="322492" /></div>
+        <div class="field"><label>佔所有買家銷售 (%)</label><input id="f-pct" type="number" step="0.01" placeholder="12.60" /></div>
+        <div class="field"><label>會員客單 ($)</label><input id="f-aov" type="number" placeholder="1260" /></div>
+        <div class="field"><label>非會員客單 ($)</label><input id="f-aov-nm" type="number" placeholder="995" /></div>
+        <div class="field"><label>會員回購率 (%)</label><input id="f-repurchase" type="number" step="0.01" placeholder="12.50" /></div>
+        <div class="field"><label>非會員回購率 (%)</label><input id="f-repurchase-nm" type="number" step="0.01" placeholder="5.38" /></div>
+        <div class="field"><label>新會員數</label><input id="f-new" type="number" placeholder="248" /></div>
+        <div class="field"><label>累計會員總數</label><input id="f-total" type="number" placeholder="3230" /></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn-save" onclick="saveMonth()">儲存月報</button>
+        <span class="save-msg" id="month-save-msg"></span>
+      </div>
+    </div>
+
+    <div class="sec">已儲存月報</div>
+    <div style="overflow-x:auto;">
+      <table class="data-table">
+        <thead>
+          <tr><th>月份</th><th>銷售額</th><th>佔比</th><th>客單</th><th>非會員客單</th><th>回購率</th><th>新會員</th><th>累計</th><th></th></tr>
+        </thead>
+        <tbody id="month-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ 會員快照 ══ -->
+  <div id="p-snapshot" class="panel">
+    <div class="card">
+      <div class="card-title">更新會員快照（從 Excel 匯出後填入）</div>
+      <div class="field-grid">
+        <div class="field"><label>資料日期</label><input id="s-date" placeholder="2026-04-14" /></div>
+        <div class="field"><label>會員總數</label><input id="s-total" type="number" placeholder="3342" /></div>
+        <div class="field"><label>有消費人數</label><input id="s-active" type="number" placeholder="2043" /></div>
+        <div class="field"><label>從未消費人數</label><input id="s-zero" type="number" placeholder="1299" /></div>
+        <div class="field"><label>平均消費 ($)</label><input id="s-avg" type="number" placeholder="815" /></div>
+        <div class="field"><label>中位數消費 ($)</label><input id="s-median" type="number" placeholder="560" /></div>
+        <div class="field"><label>$1,200+ 高價值客</label><input id="s-hv" type="number" placeholder="845" /></div>
+        <div class="field"><label>接近銀卡（$3,000–4,999）</label><input id="s-near-silver" type="number" placeholder="105" /></div>
+        <div class="field"><label>銀卡會員數</label><input id="s-silver" type="number" placeholder="36" /></div>
+      </div>
+      <div class="field-grid">
+        <div class="field"><label>75點+ 可換剋菌液</label><input id="s-r75" type="number" placeholder="366" /></div>
+        <div class="field"><label>100點+ 可換食器皂</label><input id="s-r100" type="number" placeholder="41" /></div>
+        <div class="field"><label>130點+ 可換洗衣精</label><input id="s-r130" type="number" placeholder="6" /></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn-save" onclick="saveSnapshot()">儲存快照</button>
+        <span class="save-msg" id="snap-save-msg"></span>
+      </div>
+    </div>
+
+    <div class="sec">目前快照數值</div>
+    <div class="snap-grid" id="snap-preview"></div>
+  </div>
+
+  <!-- ══ 點數制度 ══ -->
+  <div id="p-points" class="panel">
+    <div class="sec">點數分布（快照資料）</div>
+    <div class="g4">
+      <div class="mc"><div class="ml">75點+ 可換剋菌液</div><div class="mv teal" id="pt-r75">—</div><div class="ms">全體 —</div></div>
+      <div class="mc"><div class="ml">100點+ 可換食器皂</div><div class="mv blue" id="pt-r100">—</div><div class="ms">全體 —</div></div>
+      <div class="mc"><div class="ml">130點+ 可換洗衣精</div><div class="mv amber" id="pt-r130">—</div><div class="ms">全體 —</div></div>
+      <div class="mc"><div class="ml">銀卡會員</div><div class="mv" id="pt-silver">—</div><div class="ms">消費 $5,000+</div></div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="sec">兌換商品設計</div>
+    <div class="bar-row"><span class="bl">75 點</span><div class="bt"><div class="bf" style="width:43%;background:#9FE1CB;"><span class="bn" style="color:#085041;">剋菌液 300ml｜需消費 $2,500｜成本 $180</span></div></div><span class="bp">入門</span></div>
+    <div class="bar-row"><span class="bl">100 點</span><div class="bt"><div class="bf" style="width:25%;background:#93C5FD;"><span class="bn" style="color:#1E40AF;">食器清潔皂 180ml｜需消費 $5,000｜銀卡同步</span></div></div><span class="bp">忠誠</span></div>
+    <div class="bar-row"><span class="bl">130 點</span><div class="bt"><div class="bf" style="width:12%;background:#FCD34D;"><span class="bn" style="color:#92400E;">洗衣精 800ml｜需消費 $8,000</span></div></div><span class="bp">頂級</span></div>
+
+    <div class="divider"></div>
+    <div class="sec">換算公式</div>
+    <div class="insight i-info">
+      <strong>門檻點數 = 入會 50 點（基數）＋ 消費點數（$100 = 1點，銅卡）</strong><br>
+      有效消費點數 = 總點數 − 50　　門檻對應消費 = (門檻點數 − 50) × $100<br><br>
+      <strong>設計原則：</strong>贈品成本 × 10 = 最低消費門檻，再加緩衝設定正式點數。100 點對齊銀卡升等（消費 $5,000），自然形成「升等 = 解鎖兌換」連動。
+    </div>
+
+    <div class="sec" style="margin-top:8px;">等級制度</div>
+    <div class="g3">
+      <div class="mc"><div class="ml">銅卡（入會即達）</div><div class="mv">×1.0</div><div class="ms">$100 = 1 點</div></div>
+      <div class="mc"><div class="ml">銀卡（消費 $5,000）</div><div class="mv amber">×2.0</div><div class="ms">$100 = 2 點</div></div>
+      <div class="mc"><div class="ml">金卡（消費 $10,000）</div><div class="mv" style="color:#B45309;">×3.0</div><div class="ms">$100 = 3 點</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const MONTH_KEY = 'member-monthly-v2';
+const SNAP_KEY  = 'member-snapshot-v2';
+
+const DEFAULT_MONTHS = [
+  { month:'2026-01', sales:292961, pct:9.21,  aov:1196, aovNm:976,  repurchase:11.02, repurchaseNm:4.93, newM:270, total:2776 },
+  { month:'2026-02', sales:260396, pct:10.20, aov:1200, aovNm:991,  repurchase:12.24, repurchaseNm:4.50, newM:206, total:2982 },
+  { month:'2026-03', sales:322492, pct:12.60, aov:1260, aovNm:995,  repurchase:12.50, repurchaseNm:5.38, newM:248, total:3230 },
+];
+
+const DEFAULT_SNAP = {
+  date:'2026-04-14', total:3342, active:2043, zero:1299,
+  avg:815, median:560, hv:845, nearSilver:105, silver:36,
+  r75:366, r100:41, r130:6
+};
+
+function loadMonths() { try { return JSON.parse(localStorage.getItem(MONTH_KEY)) || DEFAULT_MONTHS; } catch { return DEFAULT_MONTHS; } }
+function saveMonthsLS(d) { try { localStorage.setItem(MONTH_KEY, JSON.stringify(d)); } catch {} }
+function loadSnap() { try { return JSON.parse(localStorage.getItem(SNAP_KEY)) || DEFAULT_SNAP; } catch { return DEFAULT_SNAP; } }
+function saveSnapLS(d) { try { localStorage.setItem(SNAP_KEY, JSON.stringify(d)); } catch {} }
+
+let months = loadMonths(), snap = loadSnap();
+let chartPct = null, chartAov = null;
+
+function fmt(n) { return Number(n).toLocaleString('zh-TW'); }
+
+function sw(id, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('p-' + id).classList.add('active');
+}
+
+function renderDash() {
+  if (!months.length) return;
+  const sorted = [...months].sort((a, b) => a.month.localeCompare(b.month));
+  const latest = sorted[sorted.length - 1];
+  const prev   = sorted.length > 1 ? sorted[sorted.length - 2] : null;
+
+  document.getElementById('latest-month-label').textContent = latest.month;
+  document.getElementById('last-updated').textContent = '最後更新 ' + new Date().toLocaleDateString('zh-TW');
+  document.getElementById('d-sales').textContent = '$' + fmt(latest.sales);
+  document.getElementById('d-sales-pct').textContent = '佔所有買家 ' + parseFloat(latest.pct).toFixed(2) + '%';
+  document.getElementById('d-aov').textContent = '$' + fmt(latest.aov);
+  document.getElementById('d-aov-vs').textContent = '非會員 $' + (latest.aovNm ? fmt(latest.aovNm) : '—');
+  document.getElementById('d-repurchase').textContent = parseFloat(latest.repurchase).toFixed(2) + '%';
+  document.getElementById('d-repurchase-vs').textContent = '非會員 ' + (latest.repurchaseNm ? parseFloat(latest.repurchaseNm).toFixed(2) + '%' : '—');
+  document.getElementById('d-new').textContent = fmt(latest.newM);
+  document.getElementById('d-total').textContent = '累計 ' + fmt(latest.total);
+
+  const labels  = sorted.map(m => m.month.replace(/^\d{4}-/, '').replace(/^0/, '') + '月');
+  const pctData = sorted.map(m => parseFloat(m.pct));
+  const aovData = sorted.map(m => parseFloat(m.aov));
+  const rpData  = sorted.map(m => parseFloat(m.repurchase));
+
+  if (chartPct) chartPct.destroy();
+  chartPct = new Chart(document.getElementById('c-pct'), {
+    type: 'line',
+    data: { labels, datasets: [{ data: pctData, borderColor: '#0D9488', borderWidth: 2.5, pointRadius: 5, pointBackgroundColor: '#0D9488', fill: true, backgroundColor: 'rgba(13,148,136,0.07)', tension: 0.35 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.parsed.y.toFixed(2) + '%' } } },
+      scales: { y: { ticks: { callback: v => v + '%', font: { size: 10 } }, grid: { color: 'rgba(0,0,0,0.05)' } }, x: { ticks: { font: { size: 10 }, autoSkip: false }, grid: { display: false } } } }
+  });
+
+  if (chartAov) chartAov.destroy();
+  chartAov = new Chart(document.getElementById('c-aov'), {
+    type: 'line',
+    data: { labels, datasets: [
+      { data: aovData, borderColor: '#2563EB', borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#2563EB', fill: false, tension: 0.35, yAxisID: 'y' },
+      { data: rpData,  borderColor: '#D97706', borderWidth: 2, borderDash: [4,3], pointRadius: 4, pointBackgroundColor: '#D97706', fill: false, tension: 0.35, yAxisID: 'y2' }
+    ]},
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+      scales: { y: { ticks: { callback: v => '$' + v, font: { size: 10 } }, grid: { color: 'rgba(0,0,0,0.05)' } },
+        y2: { position: 'right', ticks: { callback: v => v + '%', font: { size: 10 } }, grid: { display: false } },
+        x: { ticks: { font: { size: 10 }, autoSkip: false }, grid: { display: false } } } }
+  });
+
+  const total = snap.total || 0;
+  document.getElementById('d-snap-total').textContent = fmt(snap.total || '—');
+  document.getElementById('d-snap-date').textContent  = snap.date ? '截至 ' + snap.date : '—';
+  document.getElementById('d-snap-avg').textContent   = snap.avg ? '$' + fmt(snap.avg) : '—';
+  document.getElementById('d-snap-median').textContent = snap.median ? '中位數 $' + fmt(snap.median) : '—';
+  document.getElementById('d-snap-zero').textContent  = fmt(snap.zero || '—');
+  document.getElementById('d-snap-zero-pct').textContent = total ? (snap.zero / total * 100).toFixed(1) + '% 未消費' : '—';
+  document.getElementById('d-snap-hv').textContent    = fmt(snap.hv || '—');
+  document.getElementById('d-snap-hv-pct').textContent = total ? (snap.hv / total * 100).toFixed(1) + '% of 全體' : '—';
+
+  document.getElementById('d-r75').textContent  = fmt(snap.r75  || '—');
+  document.getElementById('d-r75-pct').textContent  = total ? (snap.r75 / total * 100).toFixed(1) + '% of 全體' : '—';
+  document.getElementById('d-r100').textContent = fmt(snap.r100 || '—');
+  document.getElementById('d-r100-pct').textContent = total ? (snap.r100 / total * 100).toFixed(1) + '% of 全體' : '—';
+  document.getElementById('d-r130').textContent = fmt(snap.r130 || '—');
+  document.getElementById('d-r130-pct').textContent = total ? (snap.r130 / total * 100).toFixed(1) + '% of 全體' : '—';
+
+  if (prev) {
+    const aovDiff = latest.aov - prev.aov;
+    const rpDiff  = parseFloat(latest.repurchase) - parseFloat(prev.repurchase);
+    const pctDiff = parseFloat(latest.pct) - parseFloat(prev.pct);
+    const cls = (aovDiff >= 0 && rpDiff >= 0) ? 'i-ok' : 'i-warn';
+    document.getElementById('d-insight-box').innerHTML =
+      `<div class="insight ${cls}">
+        <strong>vs 上月（${prev.month}）：</strong>
+        客單 ${aovDiff >= 0 ? '↑ +' : '↓ '}$${Math.abs(aovDiff).toLocaleString()}，
+        佔比 ${pctDiff >= 0 ? '↑ +' : '↓ '}${Math.abs(pctDiff).toFixed(2)}%，
+        回購率 ${rpDiff >= 0 ? '↑ +' : '↓ '}${Math.abs(rpDiff).toFixed(2)}%。
+      </div>`;
+  }
+}
+
+function renderMonthTable() {
+  const sorted = [...months].sort((a, b) => b.month.localeCompare(a.month));
+  document.getElementById('month-table-body').innerHTML = sorted.map(m => `
+    <tr>
+      <td><strong>${m.month}</strong></td>
+      <td>$${fmt(m.sales)}</td>
+      <td>${parseFloat(m.pct).toFixed(2)}%</td>
+      <td>$${fmt(m.aov)}</td>
+      <td>${m.aovNm ? '$' + fmt(m.aovNm) : '—'}</td>
+      <td>${parseFloat(m.repurchase).toFixed(2)}%</td>
+      <td>${fmt(m.newM)}</td>
+      <td>${fmt(m.total)}</td>
+      <td><button class="del-btn" onclick="deleteMonth('${m.month}')">✕</button></td>
+    </tr>`).join('');
+}
+
+function renderSnapPreview() {
+  const fields = [
+    ['資料日期', snap.date || '—'],
+    ['會員總數', snap.total ? fmt(snap.total) : '—'],
+    ['有消費人數', snap.active ? fmt(snap.active) : '—'],
+    ['從未消費', snap.zero ? fmt(snap.zero) + ' 人' : '—'],
+    ['平均消費', snap.avg ? '$' + fmt(snap.avg) : '—'],
+    ['中位數消費', snap.median ? '$' + fmt(snap.median) : '—'],
+    ['$1,200+ 高價值', snap.hv ? fmt(snap.hv) + ' 人' : '—'],
+    ['接近銀卡', snap.nearSilver ? fmt(snap.nearSilver) + ' 人' : '—'],
+    ['銀卡會員', snap.silver ? fmt(snap.silver) + ' 人' : '—'],
+    ['75點+', snap.r75 ? fmt(snap.r75) + ' 人' : '—'],
+    ['100點+', snap.r100 ? fmt(snap.r100) + ' 人' : '—'],
+    ['130點+', snap.r130 ? fmt(snap.r130) + ' 人' : '—'],
+  ];
+  document.getElementById('snap-preview').innerHTML = fields.map(([l, v]) =>
+    `<div class="mc"><div class="ml">${l}</div><div class="mv" style="font-size:16px;">${v}</div></div>`
+  ).join('');
+}
+
+function renderPoints() {
+  const total = snap.total || 1;
+  document.getElementById('pt-r75').textContent   = fmt(snap.r75 || '—');
+  document.getElementById('pt-r100').textContent  = fmt(snap.r100 || '—');
+  document.getElementById('pt-r130').textContent  = fmt(snap.r130 || '—');
+  document.getElementById('pt-silver').textContent = fmt(snap.silver || '—');
+}
+
+function saveMonth() {
+  const m = {
+    month:       document.getElementById('f-month').value.trim(),
+    sales:       parseFloat(document.getElementById('f-sales').value) || 0,
+    pct:         parseFloat(document.getElementById('f-pct').value) || 0,
+    aov:         parseFloat(document.getElementById('f-aov').value) || 0,
+    aovNm:       parseFloat(document.getElementById('f-aov-nm').value) || 0,
+    repurchase:  parseFloat(document.getElementById('f-repurchase').value) || 0,
+    repurchaseNm:parseFloat(document.getElementById('f-repurchase-nm').value) || 0,
+    newM:        parseInt(document.getElementById('f-new').value) || 0,
+    total:       parseInt(document.getElementById('f-total').value) || 0,
+  };
+  if (!m.month) { alert('請填入月份（格式：2026-04）'); return; }
+  const idx = months.findIndex(x => x.month === m.month);
+  if (idx >= 0) months[idx] = m; else months.push(m);
+  saveMonthsLS(months);
+  renderMonthTable();
+  renderDash();
+  const msg = document.getElementById('month-save-msg');
+  msg.textContent = m.month + ' 已儲存 ✓';
+  setTimeout(() => msg.textContent = '', 2500);
+  ['f-month','f-sales','f-pct','f-aov','f-aov-nm','f-repurchase','f-repurchase-nm','f-new','f-total'].forEach(id => document.getElementById(id).value = '');
+}
+
+function deleteMonth(month) {
+  if (!confirm('確定刪除 ' + month + ' 的月報？')) return;
+  months = months.filter(m => m.month !== month);
+  saveMonthsLS(months);
+  renderMonthTable();
+  renderDash();
+}
+
+function saveSnapshot() {
+  snap = {
+    date:       document.getElementById('s-date').value.trim(),
+    total:      parseInt(document.getElementById('s-total').value) || 0,
+    active:     parseInt(document.getElementById('s-active').value) || 0,
+    zero:       parseInt(document.getElementById('s-zero').value) || 0,
+    avg:        parseFloat(document.getElementById('s-avg').value) || 0,
+    median:     parseFloat(document.getElementById('s-median').value) || 0,
+    hv:         parseInt(document.getElementById('s-hv').value) || 0,
+    nearSilver: parseInt(document.getElementById('s-near-silver').value) || 0,
+    silver:     parseInt(document.getElementById('s-silver').value) || 0,
+    r75:        parseInt(document.getElementById('s-r75').value) || 0,
+    r100:       parseInt(document.getElementById('s-r100').value) || 0,
+    r130:       parseInt(document.getElementById('s-r130').value) || 0,
+  };
+  saveSnapLS(snap);
+  renderSnapPreview();
+  renderDash();
+  renderPoints();
+  const msg = document.getElementById('snap-save-msg');
+  msg.textContent = '快照已儲存 ✓';
+  setTimeout(() => msg.textContent = '', 2500);
+}
+
+renderDash();
+renderMonthTable();
+renderSnapPreview();
+renderPoints();
+</script>
+</body>
+</html>
